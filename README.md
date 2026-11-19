@@ -12,8 +12,11 @@ Explorer 上の右クリックを Shift+右クリックとして扱わせるこ�
 
 ## 使い方
 
-1. `ExpClassicMenu.exe` を起動します。タスクトレイにアイコンが表示されます。
-2. Explorer のファイル一覧、ナビゲーションペイン、デスクトップで右クリックすると、従来のメニューが表示されます。
+1. [Releases](https://github.com/mikekoma/ExpClassicMenu/releases/latest) から `ExpClassicMenu-verXXX.zip` をダウンロードして、好きなフォルダに展開します。インストールは不要です。
+2. `ExpClassicMenu.exe` を起動します。タスクトレイにアイコンが表示されます。
+3. Explorer のファイル一覧、ナビゲーションペイン、デスクトップで右クリックすると、従来のメニューが表示されます。
+
+exe には署名がないため、初めて起動するときに SmartScreen の警告が出ることがあります。その場合は「詳細情報」→「実行」で起動できます。
 
 二重起動はできません。
 
