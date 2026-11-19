@@ -37,6 +37,9 @@ function ChangeWindowMessageFilterEx(hWnd: HWND; message: UINT; action: DWORD;
 const
   APP_NAME      = 'ExpClassicMenu';
   APP_TITLE     = 'ExpClassicMenu - 従来の右クリックメニュー';
+  APP_VERSION   = 'ver001';
+  APP_COPYRIGHT = 'Copyright (c) 2026 mikekoma';
+  APP_CONTACT   = 'mail: mike@s-m-l.org' + sLineBreak + 'web: https://www.s-m-l.org';
   WND_CLASS     = 'ExpClassicMenuWnd';
   MUTEX_NAME    = 'ExpClassicMenu_SingleInstance_Mutex';
   REG_KEY       = 'Software\ExpClassicMenu';
@@ -51,6 +54,7 @@ const
   IDM_ENABLED   = 101;
   IDM_DIALOGS   = 102;
   IDM_STARTUP   = 103;
+  IDM_ABOUT     = 104;
   IDM_EXIT      = 199;
 
   LLMHF_INJECTED_FLAG = $00000001;
@@ -76,6 +80,7 @@ var
   GIncludeDialogs: Boolean = False;
 
   GShiftInjected: Boolean = False;
+  GAboutShown: Boolean = False;
 
   // プロセス判定のキャッシュ
   GCachePid: DWORD = 0;
@@ -448,6 +453,21 @@ begin
   TrayUpdate;
 end;
 
+procedure ShowAbout;
+begin
+  // 表示中に再度メニューから選ばれても二重に開かない
+  if GAboutShown then
+    Exit;
+  GAboutShown := True;
+  try
+    MessageBox(GWnd, PChar(APP_NAME + ' ' + APP_VERSION + sLineBreak + sLineBreak +
+      APP_COPYRIGHT + sLineBreak + APP_CONTACT),
+      'バージョン情報', MB_OK or MB_ICONINFORMATION or MB_SETFOREGROUND);
+  finally
+    GAboutShown := False;
+  end;
+end;
+
 procedure ShowTrayMenu;
 const
   CHECKED: array[Boolean] of UINT = (MF_UNCHECKED, MF_CHECKED);
@@ -464,6 +484,7 @@ begin
     AppendMenu(Menu, MF_STRING or CHECKED[IsStartupRegistered], IDM_STARTUP,
       'Windows 起動時に実行(&S)');
     AppendMenu(Menu, MF_SEPARATOR, 0, nil);
+    AppendMenu(Menu, MF_STRING, IDM_ABOUT, 'バージョン情報(&A)');
     AppendMenu(Menu, MF_STRING, IDM_EXIT, '終了(&X)');
     SetMenuDefaultItem(Menu, IDM_ENABLED, 0);
 
@@ -486,6 +507,8 @@ begin
       end;
     IDM_STARTUP:
       SetStartupRegistered(not IsStartupRegistered);
+    IDM_ABOUT:
+      ShowAbout;
     IDM_EXIT:
       DestroyWindow(GWnd);
   end;
