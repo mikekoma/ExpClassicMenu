@@ -1,0 +1,20 @@
+# Delphi ビルド出力
+Win32/
+Win64/
+*.dcu
+*.exe
+*.map
+*.drc
+
+# Delphi IDE の一時ファイル
+__history/
+__recovery/
+*.identcache
+*.local
+*.stat
+*.dsk
+*.~*
+
+# OS
+Thumbs.db
+desktop.ini
