@@ -78,6 +78,15 @@ Delphi(RAD Studio)でビルドします。VCL は使わず、WinAPI だけで作
 dcc64 -B "-NSWinapi;System;System.Win" -EWin64\Release -NUWin64\Release\dcu ExpClassicMenu.dpr
 ```
 
+### リリース時のビルド環境
+
+| 項目 | 内容 |
+|---|---|
+| 開発環境 | Delphi 13 Florence Professional(RAD Studio 37.0、ビルド 37.0.60952.8797) |
+| コンパイラ | Embarcadero Delphi for Win64 compiler version 37.0 |
+| ターゲット | Win64 / Release |
+| OS | Windows 11 Pro(ビルド 26200) |
+
 ## ファイル構成
 
 | ファイル | 内容 |
