@@ -86,3 +86,16 @@ dcc64 -B "-NSWinapi;System;System.Win" -EWin64\Release -NUWin64\Release\dcu ExpC
 | `uExpClassicMenu.pas` | フック、トレイ、設定の処理 |
 | `ExpClassicMenu.dproj` / `ExpClassicMenu.res` | IDE のプロジェクト設定とリソース |
 | `docs/` | README で使っている画像 |
+| `LICENSE` | ライセンス |
+
+## ライセンス
+
+[MIT License](LICENSE) です。
+
+Copyright (c) 2026 mikekoma
+
+## 連絡先
+
+- mikekoma
+- メール: mike@s-m-l.org
+- Web: <https://www.s-m-l.org>
