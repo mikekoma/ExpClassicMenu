@@ -6,6 +6,9 @@ Win64/
 *.map
 *.drc
 
+# 配布用 zip の出力先(make-release.ps1)
+dist/
+
 # Delphi IDE の一時ファイル
 __history/
 __recovery/

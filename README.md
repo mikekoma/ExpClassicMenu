@@ -84,6 +84,16 @@ Delphi(RAD Studio)でビルドします。VCL は使わず、WinAPI だけで作
 dcc64 -B "-NSWinapi;System;System.Win" -EWin64\Release -NUWin64\Release\dcu ExpClassicMenu.dpr
 ```
 
+### 配布用 zip の作成
+
+`make-release.ps1` で、ビルドから配布用 zip の作成までを行います。未コミットの変更がない状態で実行してください。
+
+```
+powershell -ExecutionPolicy Bypass -File make-release.ps1 -Version ver002
+```
+
+`dist\ExpClassicMenu-ver002.zip` ができます。中身は exe、`README.md`、`LICENSE`、`docs/` です。最後に SHA-256 を表示します。
+
 ### リリース時のビルド環境
 
 | 項目 | 内容 |
@@ -101,6 +111,7 @@ dcc64 -B "-NSWinapi;System;System.Win" -EWin64\Release -NUWin64\Release\dcu ExpC
 | `uExpClassicMenu.pas` | フック、トレイ、設定の処理 |
 | `ExpClassicMenu.dproj` / `ExpClassicMenu.res` | IDE のプロジェクト設定とリソース |
 | `docs/` | README で使っている画像 |
+| `make-release.ps1` | 配布用 zip を作るスクリプト |
 | `LICENSE` | ライセンス |
 
 ## 更新履歴
