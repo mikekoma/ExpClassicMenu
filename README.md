@@ -15,9 +15,19 @@ Explorer 上の右クリックを Shift+右クリックとして扱わせるこ�
 
 二重起動はできません。
 
+### タスクトレイのアイコン
+
+| 有効 | 無効 |
+|:---:|:---:|
+| ![有効時のアイコン](docs/tray-icon-on.png) | ![無効時のアイコン](docs/tray-icon-off.png) |
+
+無効のときは、アイコンが灰色になります。
+
 ### タスクトレイのメニュー
 
 アイコンを右クリックすると、次のメニューが表示されます。
+
+![タスクトレイのメニュー](docs/tray-menu.png)
 
 | 項目 | 内容 |
 |---|---|
@@ -25,8 +35,6 @@ Explorer 上の右クリックを Shift+右クリックとして扱わせるこ�
 | 他アプリのファイルダイアログにも適用 | 他のアプリの「開く」「保存」ダイアログでも従来メニューを表示します(初期値はオフ) |
 | Windows 起動時に実行 | ログオン時に自動で起動するよう登録、または解除します |
 | 終了 | アプリを終了します |
-
-無効のときは、アイコンが灰色になります。
 
 ## 対象となる場所
 
@@ -77,3 +85,4 @@ dcc64 -B "-NSWinapi;System;System.Win" -EWin64\Release -NUWin64\Release\dcu ExpC
 | `ExpClassicMenu.dpr` | プロジェクト本体 |
 | `uExpClassicMenu.pas` | フック、トレイ、設定の処理 |
 | `ExpClassicMenu.dproj` / `ExpClassicMenu.res` | IDE のプロジェクト設定とリソース |
+| `docs/` | README で使っている画像 |
