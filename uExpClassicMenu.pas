@@ -11,6 +11,10 @@
     - 右ボタンを離したあと少し待ってから Shift を離す。
       → Explorer は WM_CONTEXTMENU 処理時に Shift 押下とみなし、従来メニューを出す。
     - 右ボタン自体は横取りしないので、右ドラッグもそのまま使える。
+    - 低レベルキーボードフック(WH_KEYBOARD_LL)でアプリケーションキー(VK_APPS)も監視する。
+      フォーカスのあるウィンドウが対象なら、最初の押下を止めて
+      「Shift 押下 → アプリケーションキー押下」の順に送り直す。
+      キーを離したあと少し待ってから Shift を離す。
 }
 
 interface
@@ -37,7 +41,7 @@ function ChangeWindowMessageFilterEx(hWnd: HWND; message: UINT; action: DWORD;
 const
   APP_NAME      = 'ExpClassicMenu';
   APP_TITLE     = 'ExpClassicMenu - 従来の右クリックメニュー';
-  APP_VERSION   = 'ver001';
+  APP_VERSION   = 'ver002';
   APP_COPYRIGHT = 'Copyright (c) 2026 mikekoma';
   APP_CONTACT   = 'mail: mike@s-m-l.org' + sLineBreak + 'web: https://www.s-m-l.org';
   WND_CLASS     = 'ExpClassicMenuWnd';
@@ -58,8 +62,19 @@ const
   IDM_EXIT      = 199;
 
   LLMHF_INJECTED_FLAG = $00000001;
+  LLKHF_EXTENDED_FLAG = $00000001;
+  LLKHF_INJECTED_FLAG = $00000010;
 
 type
+  PKbdLLHook = ^TKbdLLHook;
+  TKbdLLHook = record
+    vkCode: DWORD;
+    scanCode: DWORD;
+    flags: DWORD;
+    time: DWORD;
+    dwExtraInfo: ULONG_PTR;
+  end;
+
   PMouseLLHook = ^TMouseLLHook;
   TMouseLLHook = record
     pt: TPoint;
@@ -72,6 +87,7 @@ type
 var
   GWnd: HWND;
   GHook: HHOOK;
+  GKbdHook: HHOOK;
   GTaskbarCreatedMsg: UINT;
   GIconOn: HICON;
   GIconOff: HICON;
@@ -193,8 +209,8 @@ begin
   GCacheIsExplorer := Result;
 end;
 
-// 指定座標がシェルのファイル表示/ナビゲーションペイン上か
-function IsTargetPoint(const APt: TPoint): Boolean;
+// 指定ウィンドウがシェルのファイル表示/ナビゲーションペイン(またはその子)か
+function IsTargetWindow(AWnd: HWND): Boolean;
 var
   h, Root: HWND;
   Pid: DWORD;
@@ -202,7 +218,7 @@ var
   OnShellView: Boolean;
 begin
   Result := False;
-  h := WindowFromPoint(APt);
+  h := AWnd;
   if h = 0 then
     Exit;
 
@@ -237,19 +253,64 @@ begin
   Result := IsExplorerProcess(Pid);
 end;
 
+// 指定座標がシェルのファイル表示/ナビゲーションペイン上か
+function IsTargetPoint(const APt: TPoint): Boolean;
+begin
+  Result := IsTargetWindow(WindowFromPoint(APt));
+end;
+
+// キーボードフォーカスのあるウィンドウが対象か
+function IsTargetFocus: Boolean;
+var
+  Fg: HWND;
+  Info: TGUIThreadInfo;
+begin
+  Fg := GetForegroundWindow;
+  if Fg = 0 then
+    Exit(False);
+  ZeroMemory(@Info, SizeOf(Info));
+  Info.cbSize := SizeOf(Info);
+  if GetGUIThreadInfo(GetWindowThreadProcessId(Fg, nil), Info) and (Info.hwndFocus <> 0) then
+    Result := IsTargetWindow(Info.hwndFocus)
+  else
+    Result := IsTargetWindow(Fg);
+end;
+
 { ---------------------------------------------------------------- Shift 注入 }
+
+procedure MakeKeyInput(var AInp: TInput; AVk: Word; AScan: Word; AFlags: DWORD);
+begin
+  ZeroMemory(@AInp, SizeOf(AInp));
+  AInp.Itype := INPUT_KEYBOARD;
+  AInp.ki.wVk := AVk;
+  AInp.ki.wScan := AScan;
+  AInp.ki.dwFlags := AFlags;
+end;
 
 procedure SendShift(ADown: Boolean);
 var
   Inp: TInput;
+  Flags: DWORD;
 begin
-  ZeroMemory(@Inp, SizeOf(Inp));
-  Inp.Itype := INPUT_KEYBOARD;
-  Inp.ki.wVk := VK_LSHIFT;
-  Inp.ki.wScan := MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC);
+  Flags := 0;
   if not ADown then
-    Inp.ki.dwFlags := KEYEVENTF_KEYUP;
+    Flags := KEYEVENTF_KEYUP;
+  MakeKeyInput(Inp, VK_LSHIFT, MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC), Flags);
   SendInput(1, Inp, SizeOf(Inp));
+end;
+
+// Shift 押下とアプリケーションキー押下を、この順で送る
+procedure SendShiftAndApps(const AKey: TKbdLLHook);
+var
+  Inp: array[0..1] of TInput;
+  Flags: DWORD;
+begin
+  MakeKeyInput(Inp[0], VK_LSHIFT, MapVirtualKey(VK_LSHIFT, MAPVK_VK_TO_VSC), 0);
+  Flags := 0;
+  if (AKey.flags and LLKHF_EXTENDED_FLAG) <> 0 then
+    Flags := KEYEVENTF_EXTENDEDKEY;
+  MakeKeyInput(Inp[1], VK_APPS, AKey.scanCode, Flags);
+  SendInput(Length(Inp), Inp[0], SizeOf(TInput));
 end;
 
 procedure ReleaseShift;
@@ -297,10 +358,43 @@ begin
   Result := CallNextHookEx(GHook, nCode, wParam, lParam);
 end;
 
+function LowLevelKeyboardProc(nCode: Integer; wParam: WPARAM; lParam: LPARAM): LRESULT; stdcall;
+var
+  P: PKbdLLHook;
+begin
+  if nCode = HC_ACTION then
+  begin
+    P := PKbdLLHook(lParam);
+    if (P^.vkCode = VK_APPS) and ((P^.flags and LLKHF_INJECTED_FLAG) = 0) then
+    begin
+      case wParam of
+        WM_KEYDOWN, WM_SYSKEYDOWN:
+          if GShiftInjected then
+            // 前回の Shift がまだ押下中(またはキーリピート) → 解放を延期してそのまま通す
+            KillTimer(GWnd, TIMER_RELEASE)
+          else if GEnabled and (not ShiftPhysicallyDown) and IsTargetFocus then
+          begin
+            GShiftInjected := True;
+            // キー押下の時点で Shift が押されている必要があるので、
+            // 元の押下は止めて Shift → アプリケーションキーの順に送り直す
+            SendShiftAndApps(P^);
+            Exit(1);
+          end;
+        WM_KEYUP, WM_SYSKEYUP:
+          if GShiftInjected then
+            SetTimer(GWnd, TIMER_RELEASE, RELEASE_DELAY, nil);
+      end;
+    end;
+  end;
+  Result := CallNextHookEx(GKbdHook, nCode, wParam, lParam);
+end;
+
 procedure InstallHook;
 begin
   if GHook = 0 then
     GHook := SetWindowsHookEx(WH_MOUSE_LL, @LowLevelMouseProc, HInstance, 0);
+  if GKbdHook = 0 then
+    GKbdHook := SetWindowsHookEx(WH_KEYBOARD_LL, @LowLevelKeyboardProc, HInstance, 0);
 end;
 
 procedure UninstallHook;
@@ -309,6 +403,11 @@ begin
   begin
     UnhookWindowsHookEx(GHook);
     GHook := 0;
+  end;
+  if GKbdHook <> 0 then
+  begin
+    UnhookWindowsHookEx(GKbdHook);
+    GKbdHook := 0;
   end;
   ReleaseShift;
 end;
@@ -592,9 +691,9 @@ begin
     ChangeWindowMessageFilterEx(GWnd, GTaskbarCreatedMsg, MSGFLT_ALLOW, nil);
 
     InstallHook;
-    if GHook = 0 then
+    if (GHook = 0) or (GKbdHook = 0) then
     begin
-      MessageBox(0, 'マウスフックの設定に失敗しました。', APP_TITLE, MB_OK or MB_ICONERROR);
+      MessageBox(0, 'マウス/キーボードフックの設定に失敗しました。', APP_TITLE, MB_OK or MB_ICONERROR);
       DestroyWindow(GWnd);
       Exit;
     end;
